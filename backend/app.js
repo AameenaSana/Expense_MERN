@@ -1,10 +1,10 @@
+require('dotenv').config();
+
 const express = require('express')
 const cors = require('cors');
 const { db } = require('./db/db');
 const {readdirSync} = require('fs')
 const app = express()
-
-require('dotenv').config()
 
 const PORT = process.env.PORT
 
@@ -23,3 +23,5 @@ const server = () => {
 }
 
 server()
+
+console.log("MONGO_URL is:", process.env.MONGO_URL);
