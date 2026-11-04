@@ -1,10 +1,18 @@
 # Expense Tracker (MERN)
 
-A full-stack expense tracker built with MongoDB, Express, React and Node.js. Record incomes and expenses, and see totals, your balance, recent history and a chart of both over time.
+A full-stack expense tracker built with MongoDB, Express, React and Node.js.
+
+## Features
+
+- **Dashboard:** monthly income, expenses and net savings with change vs the previous month, a 6-month income vs expenses chart, spending by category, recent transactions and a budget snapshot. Step back and forward through months.
+- **Transactions:** add, edit and delete income and expenses. Search, filter by type, category and month, sort by date or amount, and export the filtered list to CSV.
+- **Budgets:** set a monthly limit per expense category and track progress, with warnings near and over the limit.
+- **Currency:** choose the display currency (saved in your browser).
+- **Reliable by design:** validation on both client and server, clear error messages, loading and empty states, confirmation before deleting, and an API test suite.
 
 ## Tech stack
 
-- **Frontend:** React 18 (Create React App), styled-components, Chart.js, react-datepicker, axios
+- **Frontend:** React 18 (Create React App), styled-components, Chart.js, axios
 - **Backend:** Node.js, Express, Mongoose
 - **Database:** MongoDB
 
@@ -95,12 +103,17 @@ Base URL: `/api/v1`
 |--------|-----------------------|-------------------------------|
 | GET    | `/get-incomes`        | List incomes, newest first    |
 | POST   | `/add-income`         | Add an income                 |
+| PUT    | `/update-income/:id`  | Update an income              |
 | DELETE | `/delete-income/:id`  | Delete an income              |
 | GET    | `/get-expenses`       | List expenses, newest first   |
 | POST   | `/add-expense`        | Add an expense                |
+| PUT    | `/update-expense/:id` | Update an expense             |
 | DELETE | `/delete-expense/:id` | Delete an expense             |
+| GET    | `/budgets`            | List monthly budgets          |
+| PUT    | `/budgets/:category`  | Create or replace a budget (`{"amount": 300}`) |
+| DELETE | `/budgets/:category`  | Remove a budget               |
 
-Request body for both `add-*` endpoints:
+Request body for the `add-*` and `update-*` endpoints:
 
 ```json
 {
@@ -114,15 +127,26 @@ Request body for both `add-*` endpoints:
 
 Validation rules:
 
-- All fields are required.
-- `amount` must be a positive number.
-- `title` can be up to 50 characters.
-- `description` can be up to 20 characters.
+- `title`, `amount`, `category` and `date` are required.
+- `amount` must be a positive number (rounded to 2 decimal places).
+- `title` can be up to 50 characters; `category` up to 30.
+- `description` (the note) is optional, up to 200 characters.
 
 Invalid input returns `400` with a `message`. Deleting an unknown id returns `404`.
+
+## Tests
+
+The backend has an API test suite. With MongoDB running:
+
+```bash
+cd backend && npm test
+```
+
+Tests use a separate `expense-tracker-test` database (override with `MONGO_TEST_URL`), which is wiped before and after each run. They refuse to run against a database whose name does not contain "test".
 
 ## Troubleshooting
 
 - **`DB Connection Error` on startup:** MongoDB isn't running, or `MONGO_URL` is wrong. Check that the database is reachable.
 - **`MONGO_URL is not set`:** `backend/.env` is missing. Repeat step 3.
+- **`Port 5000 is already in use`:** another server is still running. Stop it, or set a different `PORT`.
 - **Blank page at http://localhost:5000:** the frontend hasn't been built. Run `npm run build` in `frontend/`.

@@ -24,12 +24,14 @@ const IncomeSchema = new mongoose.Schema({
     category: {
         type: String,
         required: true,
-        trim: true
+        trim: true,
+        maxLength: [30, "Category must be at most 30 characters"]
     },
+    // Optional note
     description: {
         type: String,
-        required: true,
-        maxLength: [20, "Description must be at most 20 characters"],
+        default: '',
+        maxLength: [200, "Note must be at most 200 characters"],
         trim: true
     },
 }, {timestamps: true})
