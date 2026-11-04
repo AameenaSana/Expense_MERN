@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useState } from "react"
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import axios from 'axios'
 
 
@@ -6,127 +6,189 @@ import axios from 'axios'
 // (via the "proxy" field in package.json). Override with REACT_APP_API_URL if needed.
 const BASE_URL = process.env.REACT_APP_API_URL || "/api/v1/";
 
+const api = axios.create({baseURL: BASE_URL, timeout: 15000})
+
+const ENDPOINTS = {
+    income: {list: 'get-incomes', add: 'add-income', update: 'update-income', remove: 'delete-income'},
+    expense: {list: 'get-expenses', add: 'add-expense', update: 'update-expense', remove: 'delete-expense'},
+}
+
+const errorMessage = (err) => {
+    if (err?.response?.data?.message) return err.response.data.message
+    if (err?.code === 'ECONNABORTED') return 'The server took too long to respond. Please try again.'
+    return 'Unable to reach the server. Check that the backend is running.'
+}
+
+const readCurrency = () => {
+    try {
+        return localStorage.getItem('currency') || 'USD'
+    } catch {
+        return 'USD'
+    }
+}
 
 const GlobalContext = React.createContext()
 
-const errorMessage = (err) =>
-    err?.response?.data?.message || 'Unable to reach the server. Please try again.'
-
 export const GlobalProvider = ({children}) => {
-
     const [incomes, setIncomes] = useState([])
     const [expenses, setExpenses] = useState([])
-    const [error, setError] = useState(null)
+    const [budgets, setBudgets] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [loadError, setLoadError] = useState(null)
+    const [currency, setCurrencyState] = useState(readCurrency)
+    const [toasts, setToasts] = useState([])
+    const toastId = useRef(0)
 
-    //incomes
-    const getIncomes = useCallback(async () => {
+    //notifications
+    const dismissToast = useCallback((id) => {
+        setToasts((list) => list.filter((t) => t.id !== id))
+    }, [])
+
+    const notify = useCallback((message, kind = 'success') => {
+        const id = ++toastId.current
+        setToasts((list) => [...list.slice(-3), {id, message, kind}])
+        setTimeout(() => dismissToast(id), 4000)
+    }, [dismissToast])
+
+    //settings
+    const setCurrency = useCallback((code) => {
+        setCurrencyState(code)
         try {
-            const response = await axios.get(`${BASE_URL}get-incomes`)
-            setIncomes(response.data)
-        } catch (err) {
-            setError(errorMessage(err))
+            localStorage.setItem('currency', code)
+        } catch {
+            // Storage unavailable (e.g. private mode); the choice lasts for this session
         }
     }, [])
 
-    // Returns true on success so forms only reset when the item was saved
-    const addIncome = async (income) => {
-        try {
-            await axios.post(`${BASE_URL}add-income`, income)
-            setError(null)
-            await getIncomes()
-            return true
-        } catch (err) {
-            setError(errorMessage(err))
-            return false
-        }
-    }
-
-    const deleteIncome = async (id) => {
-        try {
-            await axios.delete(`${BASE_URL}delete-income/${id}`)
-        } catch (err) {
-            setError(errorMessage(err))
-        }
-        getIncomes()
-    }
-
-    const totalIncome = () => {
-        return incomes.reduce((total, income) => total + income.amount, 0)
-    }
-
-
-    //expenses
-    const getExpenses = useCallback(async () => {
-        try {
-            const response = await axios.get(`${BASE_URL}get-expenses`)
-            setExpenses(response.data)
-        } catch (err) {
-            setError(errorMessage(err))
-        }
+    //loading
+    const loadType = useCallback(async (type) => {
+        const {data} = await api.get(ENDPOINTS[type].list)
+        const list = data.map((item) => ({...item, type: item.type || type}))
+        ;(type === 'income' ? setIncomes : setExpenses)(list)
     }, [])
 
-    const addExpense = async (expense) => {
+    const loadBudgets = useCallback(async () => {
+        const {data} = await api.get('budgets')
+        setBudgets(data)
+    }, [])
+
+    const refresh = useCallback(async () => {
+        setLoading(true)
+        setLoadError(null)
         try {
-            await axios.post(`${BASE_URL}add-expense`, expense)
-            setError(null)
-            await getExpenses()
-            return true
+            await Promise.all([loadType('income'), loadType('expense'), loadBudgets()])
         } catch (err) {
-            setError(errorMessage(err))
-            return false
+            setLoadError(errorMessage(err))
+        } finally {
+            setLoading(false)
         }
-    }
+    }, [loadType, loadBudgets])
 
-    const deleteExpense = async (id) => {
+    useEffect(() => {
+        refresh()
+    }, [refresh])
+
+    // Reload after a change. A failed reload is reported separately so the
+    // user isn't told a successful save failed (and doesn't save it twice).
+    const reloadAfterChange = useCallback(async (loader) => {
         try {
-            await axios.delete(`${BASE_URL}delete-expense/${id}`)
-        } catch (err) {
-            setError(errorMessage(err))
+            await loader()
+        } catch {
+            notify('Saved, but the list could not be refreshed. Reload the page.', 'error')
         }
-        getExpenses()
-    }
+    }, [notify])
 
-    const totalExpenses = () => {
-        return expenses.reduce((total, expense) => total + expense.amount, 0)
-    }
+    //transactions
+    const saveTransaction = useCallback(async (type, data, id) => {
+        try {
+            if (id) {
+                await api.put(`${ENDPOINTS[type].update}/${id}`, data)
+            } else {
+                await api.post(ENDPOINTS[type].add, data)
+            }
+        } catch (err) {
+            return {ok: false, error: errorMessage(err)}
+        }
+        await reloadAfterChange(() => loadType(type))
+        notify(id ? 'Transaction updated' : `${type === 'income' ? 'Income' : 'Expense'} added`)
+        return {ok: true}
+    }, [loadType, notify, reloadAfterChange])
 
+    const deleteTransaction = useCallback(async (transaction) => {
+        const {type, _id} = transaction
+        try {
+            await api.delete(`${ENDPOINTS[type].remove}/${_id}`)
+        } catch (err) {
+            // Already gone on the server: treat as deleted
+            if (err?.response?.status !== 404) {
+                notify(errorMessage(err), 'error')
+                return {ok: false}
+            }
+        }
+        await reloadAfterChange(() => loadType(type))
+        notify('Transaction deleted')
+        return {ok: true}
+    }, [loadType, notify, reloadAfterChange])
 
-    const totalBalance = () => {
-        return totalIncome() - totalExpenses()
-    }
+    //budgets
+    const saveBudget = useCallback(async (category, amount) => {
+        try {
+            await api.put(`budgets/${encodeURIComponent(category)}`, {amount})
+        } catch (err) {
+            notify(errorMessage(err), 'error')
+            return {ok: false}
+        }
+        await reloadAfterChange(loadBudgets)
+        notify('Budget saved')
+        return {ok: true}
+    }, [loadBudgets, notify, reloadAfterChange])
 
-    const transactionHistory = () => {
-        const history = [...incomes, ...expenses]
-        history.sort((a, b) => {
-            return new Date(b.createdAt) - new Date(a.createdAt)
-        })
+    const deleteBudget = useCallback(async (category) => {
+        try {
+            await api.delete(`budgets/${encodeURIComponent(category)}`)
+        } catch (err) {
+            if (err?.response?.status !== 404) {
+                notify(errorMessage(err), 'error')
+                return {ok: false}
+            }
+        }
+        await reloadAfterChange(loadBudgets)
+        notify('Budget removed')
+        return {ok: true}
+    }, [loadBudgets, notify, reloadAfterChange])
 
-        return history.slice(0, 3)
-    }
+    // All transactions, newest date first
+    const transactions = useMemo(() => {
+        return [...incomes, ...expenses].sort((a, b) =>
+            new Date(b.date) - new Date(a.date) || new Date(b.createdAt) - new Date(a.createdAt)
+        )
+    }, [incomes, expenses])
 
+    const value = useMemo(() => ({
+        transactions,
+        budgets,
+        loading,
+        loadError,
+        refresh,
+        saveTransaction,
+        deleteTransaction,
+        saveBudget,
+        deleteBudget,
+        currency,
+        setCurrency,
+        toasts,
+        notify,
+        dismissToast,
+    }), [transactions, budgets, loading, loadError, refresh, saveTransaction, deleteTransaction,
+        saveBudget, deleteBudget, currency, setCurrency, toasts, notify, dismissToast])
 
     return (
-        <GlobalContext.Provider value={{
-            addIncome,
-            getIncomes,
-            incomes,
-            deleteIncome,
-            expenses,
-            totalIncome,
-            addExpense,
-            getExpenses,
-            deleteExpense,
-            totalExpenses,
-            totalBalance,
-            transactionHistory,
-            error,
-            setError
-        }}>
+        <GlobalContext.Provider value={value}>
             {children}
         </GlobalContext.Provider>
     )
 }
 
-export const useGlobalContext = () =>{
+export const useGlobalContext = () => {
     return useContext(GlobalContext)
 }
