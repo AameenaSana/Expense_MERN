@@ -210,7 +210,7 @@ const Form = styled.form`
         padding: .75rem 1rem;
         border-radius: var(--radius-sm);
         background: var(--expense-soft);
-        color: #991b1b;
+        color: var(--expense-text);
         font-size: .875rem;
     }
 

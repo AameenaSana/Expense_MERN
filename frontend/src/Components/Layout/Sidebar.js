@@ -4,6 +4,7 @@ import { useGlobalContext } from '../../context/globalContext'
 import { CURRENCIES } from '../../utils/categories'
 import Icon from '../ui/Icon'
 import { Select } from '../ui/Field'
+import ThemeToggle from '../ui/ThemeToggle'
 
 export const NAV_ITEMS = [
     {id: 'dashboard', label: 'Dashboard', icon: 'chart-pie'},
@@ -18,7 +19,7 @@ function Sidebar({page, onNavigate}) {
         <Nav aria-label="Main">
             <div className="brand">
                 <span className="logo"><Icon name="wallet" /></span>
-                <span>Expense Tracker</span>
+                <span className="brand-name">Expense Tracker</span>
             </div>
 
             <ul className="links">
@@ -37,12 +38,18 @@ function Sidebar({page, onNavigate}) {
             </ul>
 
             <div className="settings">
-                <label htmlFor="currency">Currency</label>
-                <Select id="currency" value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                    {CURRENCIES.map((c) => (
-                        <option key={c.code} value={c.code}>{c.code} · {c.label}</option>
-                    ))}
-                </Select>
+                <div className="theme-row">
+                    <span className="setting-label">Theme</span>
+                    <ThemeToggle />
+                </div>
+                <div className="currency">
+                    <label htmlFor="currency" className="setting-label">Currency</label>
+                    <Select id="currency" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                        {CURRENCIES.map((c) => (
+                            <option key={c.code} value={c.code}>{c.code} · {c.label}</option>
+                        ))}
+                    </Select>
+                </div>
             </div>
         </Nav>
     )
@@ -68,9 +75,11 @@ const Nav = styled.nav`
         padding: 0 .5rem;
         font-weight: 700;
         font-size: 1.05rem;
+        white-space: nowrap;
         .logo{
             display: grid;
             place-items: center;
+            flex-shrink: 0;
             width: 36px;
             height: 36px;
             border-radius: 10px;
@@ -107,7 +116,7 @@ const Nav = styled.nav`
             }
             &.active{
                 background: var(--primary-soft);
-                color: var(--primary);
+                color: var(--primary-text);
             }
         }
     }
@@ -115,19 +124,28 @@ const Nav = styled.nav`
     .settings{
         display: flex;
         flex-direction: column;
-        gap: .375rem;
+        gap: 1rem;
         padding: 0 .5rem;
-        label{
-            font-size: .75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: .04em;
-            color: var(--text-subtle);
-        }
+    }
+    .theme-row{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .currency{
+        display: flex;
+        flex-direction: column;
+        gap: .375rem;
+    }
+    .setting-label{
+        font-size: .75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: var(--text-subtle);
     }
 
     @media (max-width: 900px){
-        position: sticky;
         z-index: 20;
         flex-direction: row;
         flex-wrap: wrap;
@@ -143,14 +161,17 @@ const Nav = styled.nav`
             flex: 1;
         }
         .settings{
+            flex-direction: row;
+            align-items: center;
+            gap: .75rem;
             padding: 0;
-            label{
-                display: none;
-            }
-            select{
-                height: 36px;
-                width: auto;
-            }
+        }
+        .setting-label{
+            display: none;
+        }
+        .currency select{
+            height: 36px;
+            width: auto;
         }
         .links{
             order: 3;
@@ -162,6 +183,12 @@ const Nav = styled.nav`
                 white-space: nowrap;
                 padding: .5rem .75rem;
             }
+        }
+    }
+
+    @media (max-width: 440px){
+        .brand-name{
+            display: none;
         }
     }
 `;

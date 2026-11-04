@@ -29,8 +29,8 @@ const variants = {
         }
     `,
     danger: css`
-        background: var(--expense);
-        border-color: var(--expense);
+        background: var(--danger);
+        border-color: var(--danger);
         color: #fff;
         &:hover:not(:disabled){
             filter: brightness(.92);

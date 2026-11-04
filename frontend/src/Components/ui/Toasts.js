@@ -44,6 +44,7 @@ const Toast = styled.div`
     padding: .75rem 1rem;
     background: #111827;
     color: #fff;
+    border: 1px solid rgba(255, 255, 255, .08);
     border-radius: var(--radius-sm);
     box-shadow: var(--shadow-lg);
     font-size: .875rem;
