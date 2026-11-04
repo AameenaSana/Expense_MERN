@@ -12,7 +12,11 @@ function Dashboard() {
     useEffect(() => {
         getIncomes()
         getExpenses()
-    }, [])
+    }, [getIncomes, getExpenses])
+
+    // Math.min/max of an empty list gives Infinity/-Infinity, so show 0 instead
+    const minOf = (items) => items.length ? Math.min(...items.map(item => item.amount)) : 0
+    const maxOf = (items) => items.length ? Math.max(...items.map(item => item.amount)) : 0
 
     return (
         <DashboardStyled>
@@ -47,19 +51,19 @@ function Dashboard() {
                         <h2 className="salary-title">Min <span>Salary</span>Max</h2>
                         <div className="salary-item">
                             <p>
-                                ${Math.min(...incomes.map(item => item.amount))}
+                                ${minOf(incomes)}
                             </p>
                             <p>
-                                ${Math.max(...incomes.map(item => item.amount))}
+                                ${maxOf(incomes)}
                             </p>
                         </div>
                         <h2 className="salary-title">Min <span>Expense</span>Max</h2>
                         <div className="salary-item">
                             <p>
-                                ${Math.min(...expenses.map(item => item.amount))}
+                                ${minOf(expenses)}
                             </p>
                             <p>
-                                ${Math.max(...expenses.map(item => item.amount))}
+                                ${maxOf(expenses)}
                             </p>
                         </div>
                     </div>

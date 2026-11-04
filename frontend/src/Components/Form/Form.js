@@ -8,11 +8,11 @@ import { plus } from '../../utils/Icons';
 
 
 function Form() {
-    const {addIncome, getIncomes, error, setError} = useGlobalContext()
+    const {addIncome, error, setError} = useGlobalContext()
     const [inputState, setInputState] = useState({
         title: '',
         amount: '',
-        date: '',
+        date: null,
         category: '',
         description: '',
     })
@@ -24,13 +24,14 @@ function Form() {
         setError('')
     }
 
-    const handleSubmit = e => {
+    const handleSubmit = async e => {
         e.preventDefault()
-        addIncome(inputState)
+        const saved = await addIncome(inputState)
+        if (!saved) return
         setInputState({
             title: '',
             amount: '',
-            date: '',
+            date: null,
             category: '',
             description: '',
         })
@@ -50,7 +51,9 @@ function Form() {
             </div>
             <div className="input-control">
                 <input value={amount}  
-                    type="text" 
+                    type="number"
+                    min="0"
+                    step="any"
                     name={'amount'} 
                     placeholder={'Salary Amount'}
                     onChange={handleInput('amount')} 
@@ -64,6 +67,7 @@ function Form() {
                     dateFormat="dd/MM/yyyy"
                     onChange={(date) => {
                         setInputState({...inputState, date: date})
+                        setError('')
                     }}
                 />
             </div>
@@ -81,7 +85,7 @@ function Form() {
                 </select>
             </div>
             <div className="input-control">
-                <textarea name="description" value={description} placeholder='Add A Reference' id="description" cols="30" rows="4" onChange={handleInput('description')}></textarea>
+                <textarea name="description" value={description} placeholder='Add A Reference' id="description" cols="30" rows="4" maxLength={20} onChange={handleInput('description')}></textarea>
             </div>
             <div className="submit-btn">
                 <Button 
@@ -89,7 +93,7 @@ function Form() {
                     icon={plus}
                     bPad={'.8rem 1.6rem'}
                     bRad={'30px'}
-                    bg={'var(--color-accent'}
+                    bg={'var(--color-accent)'}
                     color={'#fff'}
                 />
             </div>

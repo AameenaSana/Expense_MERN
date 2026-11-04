@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import styled from 'styled-components'
 import avatar from '../../img/avatar.png'
 import { signout } from '../../utils/Icons'
@@ -9,7 +9,7 @@ function Navigation({active, setActive}) {
     return (
         <NavStyled>
             <div className="user-con">
-                <img src={avatar} alt="" />
+                <img src={avatar} alt="User avatar" />
                 <div className="text">
                     <h2>Mike</h2>
                     <p>Your Money</p>
@@ -27,11 +27,11 @@ function Navigation({active, setActive}) {
                     </li>
                 })}
             </ul>
-            <div className="bottom-nav">
+            <ul className="bottom-nav">
                 <li>
                     {signout} Sign Out
                 </li>
-            </div>
+            </ul>
         </NavStyled>
     )
 }
