@@ -137,7 +137,7 @@ const Shell = styled.div`
     padding: .75rem 1rem;
     border-radius: var(--radius-sm);
     background: var(--warning-soft);
-    color: #92400e;
+    color: var(--warning-text);
     font-size: .875rem;
     span{
       flex: 1;
