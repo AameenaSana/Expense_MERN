@@ -62,8 +62,6 @@ function IncomeItem({
         }
     }
 
-    console.log('type', type)
-
     return (
         <IncomeItemStyled indicator={indicatorColor}>
             <div className="icon">
@@ -85,10 +83,8 @@ function IncomeItem({
                             icon={trash}
                             bPad={'1rem'}
                             bRad={'50%'}
-                            bg={'var(--primary-color'}
+                            bg={'var(--primary-color)'}
                             color={'#fff'}
-                            iColor={'#fff'}
-                            hColor={'var(--color-green)'}
                             onClick={() => deleteItem(id)}
                         />
                     </div>

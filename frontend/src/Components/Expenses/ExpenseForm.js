@@ -12,7 +12,7 @@ function ExpenseForm() {
     const [inputState, setInputState] = useState({
         title: '',
         amount: '',
-        date: '',
+        date: null,
         category: '',
         description: '',
     })
@@ -24,13 +24,14 @@ function ExpenseForm() {
         setError('')
     }
 
-    const handleSubmit = e => {
+    const handleSubmit = async e => {
         e.preventDefault()
-        addExpense(inputState)
+        const saved = await addExpense(inputState)
+        if (!saved) return
         setInputState({
             title: '',
             amount: '',
-            date: '',
+            date: null,
             category: '',
             description: '',
         })
@@ -50,7 +51,9 @@ function ExpenseForm() {
             </div>
             <div className="input-control">
                 <input value={amount}  
-                    type="text" 
+                    type="number"
+                    min="0"
+                    step="any"
                     name={'amount'} 
                     placeholder={'Expense Amount'}
                     onChange={handleInput('amount')} 
@@ -64,6 +67,7 @@ function ExpenseForm() {
                     dateFormat="dd/MM/yyyy"
                     onChange={(date) => {
                         setInputState({...inputState, date: date})
+                        setError('')
                     }}
                 />
             </div>
@@ -81,7 +85,7 @@ function ExpenseForm() {
                 </select>
             </div>
             <div className="input-control">
-                <textarea name="description" value={description} placeholder='Add A Reference' id="description" cols="30" rows="4" onChange={handleInput('description')}></textarea>
+                <textarea name="description" value={description} placeholder='Add A Reference' id="description" cols="30" rows="4" maxLength={20} onChange={handleInput('description')}></textarea>
             </div>
             <div className="submit-btn">
                 <Button 
@@ -89,7 +93,7 @@ function ExpenseForm() {
                     icon={plus}
                     bPad={'.8rem 1.6rem'}
                     bRad={'30px'}
-                    bg={'var(--color-accent'}
+                    bg={'var(--color-accent)'}
                     color={'#fff'}
                 />
             </div>

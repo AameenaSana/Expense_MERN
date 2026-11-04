@@ -6,13 +6,12 @@ const IncomeSchema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true,
-        maxLength: 50
+        maxLength: [50, "Title must be at most 50 characters"]
     },
     amount: {
         type: Number,
         required: true,
-        maxLength: 20,
-        trim: true
+        min: [0.01, "Amount must be a positive number!"]
     },
     type: {
         type: String,
@@ -20,8 +19,7 @@ const IncomeSchema = new mongoose.Schema({
     },
     date: {
         type: Date,
-        required: true,
-        trim: true
+        required: true
     },
     category: {
         type: String,
@@ -31,7 +29,7 @@ const IncomeSchema = new mongoose.Schema({
     description: {
         type: String,
         required: true,
-        maxLength: 20,
+        maxLength: [20, "Description must be at most 20 characters"],
         trim: true
     },
 }, {timestamps: true})
