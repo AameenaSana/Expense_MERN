@@ -3,7 +3,7 @@ const { handleError, LIMITS } = require("./transactionHelpers")
 
 exports.getBudgets = async (req, res) => {
     try {
-        const budgets = await BudgetModel.find().sort({category: 1})
+        const budgets = await BudgetModel.find({user: req.user._id}).sort({category: 1})
         res.status(200).json(budgets)
     } catch (error) {
         handleError(res, error)
@@ -27,8 +27,8 @@ exports.setBudget = async (req, res) => {
 
     try {
         const budget = await BudgetModel.findOneAndUpdate(
-            {category},
-            {category, amount: Math.round(amount * 100) / 100},
+            {user: req.user._id, category},
+            {user: req.user._id, category, amount: Math.round(amount * 100) / 100},
             {new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true}
         )
         res.status(200).json({message: 'Budget Saved', data: budget})
@@ -40,7 +40,7 @@ exports.setBudget = async (req, res) => {
 exports.deleteBudget = async (req, res) => {
     const category = (req.params.category || '').trim()
     try {
-        const deleted = await BudgetModel.findOneAndDelete({category})
+        const deleted = await BudgetModel.findOneAndDelete({user: req.user._id, category})
         if (!deleted) {
             return res.status(404).json({message: 'Budget not found'})
         }

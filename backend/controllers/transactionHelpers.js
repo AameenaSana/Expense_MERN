@@ -78,7 +78,7 @@ exports.addTransaction = (Model, label) => async (req, res) => {
         return res.status(400).json({message: errors.join('. ')})
     }
     try {
-        const doc = await new Model(value).save()
+        const doc = await new Model({...value, user: req.user._id}).save()
         res.status(200).json({message: `${label} Added`, data: doc})
     } catch (error) {
         handleError(res, error)
@@ -87,7 +87,7 @@ exports.addTransaction = (Model, label) => async (req, res) => {
 
 exports.getTransactions = (Model) => async (req, res) => {
     try {
-        const docs = await Model.find().sort({date: -1, createdAt: -1})
+        const docs = await Model.find({user: req.user._id}).sort({date: -1, createdAt: -1})
         res.status(200).json(docs)
     } catch (error) {
         handleError(res, error)
@@ -102,7 +102,8 @@ exports.updateTransaction = (Model, label) => async (req, res) => {
         return res.status(400).json({message: errors.join('. ')})
     }
     try {
-        const doc = await Model.findByIdAndUpdate(id, value, {new: true, runValidators: true})
+        // Scoped to the owner, so other users' entries are reported as not found
+        const doc = await Model.findOneAndUpdate({_id: id, user: req.user._id}, value, {new: true, runValidators: true})
         if (!doc) {
             return res.status(404).json({message: `${label} not found`})
         }
@@ -116,7 +117,7 @@ exports.deleteTransaction = (Model, label) => async (req, res) => {
     const {id} = req.params
     if (!validId(res, id)) return
     try {
-        const deleted = await Model.findByIdAndDelete(id)
+        const deleted = await Model.findOneAndDelete({_id: id, user: req.user._id})
         if (!deleted) {
             return res.status(404).json({message: `${label} not found`})
         }
