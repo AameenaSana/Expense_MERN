@@ -16,6 +16,12 @@ if (!process.env.JWT_SECRET) {
     process.exit(1)
 }
 
+// Behind a hosting proxy (e.g. Render), trust its X-Forwarded-For header so
+// rate limiting sees each visitor's real IP. Only enable this behind a proxy.
+if (process.env.TRUST_PROXY) {
+    app.set('trust proxy', Number(process.env.TRUST_PROXY) || 1)
+}
+
 //middlewares
 app.use(express.json({limit: '10kb'}))
 app.use(cors())

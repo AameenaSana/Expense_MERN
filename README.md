@@ -20,8 +20,10 @@ A full-stack expense tracker built with MongoDB, Express, React and Node.js.
 ## Project structure
 
 ```
-backend/     Express API (routes, controllers, Mongoose models)
-frontend/    React app
+backend/      Express API (routes, controllers, middleware, Mongoose models)
+frontend/     React app
+package.json  Root scripts that build and start the whole app (used for deployment)
+render.yaml   Render deployment blueprint
 ```
 
 In production the backend also serves the built React app from `frontend/build`, so the whole app runs on a single port.
@@ -61,6 +63,7 @@ In production the backend also serves the built React app from `frontend/build`,
    | `MONGO_URL` | MongoDB connection string      | `mongodb://127.0.0.1:27017/expense-tracker` |
    | `PORT`      | Port the API server listens on | `5000`                                      |
    | `JWT_SECRET` | Secret used to sign login tokens (required) | a long random string |
+   | `TRUST_PROXY` | Set to `1` only when running behind a reverse proxy | `1` |
 
    Generate a secret with:
 
@@ -103,6 +106,24 @@ Open http://localhost:3000. The React dev server proxies `/api` requests to `htt
 
 To point the frontend at a different API URL, set `REACT_APP_API_URL` before building, for example `REACT_APP_API_URL=https://api.example.com/api/v1/`.
 
+## Deploying (Render + MongoDB Atlas)
+
+The repo includes a [Render](https://render.com) blueprint (`render.yaml`) that runs the API and the built React app as one free web service.
+
+1. **Create a database on MongoDB Atlas.**
+   - Create a free cluster at [mongodb.com/atlas](https://www.mongodb.com/atlas).
+   - Under **Database Access**, add a database user with a password.
+   - Under **Network Access**, allow access from anywhere (`0.0.0.0/0`), since Render's IP addresses change.
+   - Click **Connect → Drivers** and copy the connection string. Add a database name before the `?`, for example `mongodb+srv://user:password@cluster0.xxxxx.mongodb.net/expense-tracker?retryWrites=true&w=majority`.
+2. **Deploy on Render.**
+   - In the Render dashboard, choose **New → Blueprint** and connect this GitHub repository.
+   - When asked for `MONGO_URL`, paste the Atlas connection string. `JWT_SECRET` is generated for you.
+   - Click **Apply**. The first build takes a few minutes; then the app is live at `https://<service-name>.onrender.com`.
+
+Every push to `main` redeploys automatically. On the free plan the service sleeps after 15 minutes without traffic, so the first request after that takes up to a minute.
+
+To deploy somewhere else, the same steps apply: run `npm run build` and `npm start` from the repo root, and set `MONGO_URL`, `JWT_SECRET`, `NODE_ENV=production` and, behind a reverse proxy, `TRUST_PROXY=1`. `GET /api/v1/health` returns `200` when the app and database are up.
+
 ## API reference
 
 Base URL: `/api/v1`
@@ -114,6 +135,7 @@ Base URL: `/api/v1`
 | POST   | `/auth/register` | Create an account (`{"name", "email", "password"}`); returns `{token, user}` |
 | POST   | `/auth/login`    | Log in (`{"email", "password"}`); returns `{token, user}` |
 | GET    | `/auth/me`       | The logged-in user                                   |
+| GET    | `/health`        | `200` when the app and database are up (no login needed) |
 
 All other endpoints require an `Authorization: Bearer <token>` header and only see the caller's own data. Tokens last 7 days. Passwords must be 8–72 characters. Login and register are rate-limited to 20 attempts per 15 minutes per IP.
 
