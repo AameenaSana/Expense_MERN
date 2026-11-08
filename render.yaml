@@ -1,0 +1,23 @@
+# Render blueprint: https://render.com/docs/blueprint-spec
+# One web service runs the API and serves the built React app.
+services:
+  - type: web
+    name: expense-tracker
+    runtime: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"
+      # Render generates a random secret on first deploy
+      - key: JWT_SECRET
+        generateValue: true
+      # MongoDB Atlas connection string; you are asked for it during setup
+      - key: MONGO_URL
+        sync: false
