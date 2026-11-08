@@ -1,10 +1,12 @@
 import React from 'react'
 import styled from 'styled-components'
 import { useGlobalContext } from '../../context/globalContext'
+import { useAuth } from '../../context/authContext'
 import { CURRENCIES } from '../../utils/categories'
 import Icon from '../ui/Icon'
 import { Select } from '../ui/Field'
 import ThemeToggle from '../ui/ThemeToggle'
+import { IconButton } from '../ui/Button'
 
 export const NAV_ITEMS = [
     {id: 'dashboard', label: 'Dashboard', icon: 'chart-pie'},
@@ -14,6 +16,7 @@ export const NAV_ITEMS = [
 
 function Sidebar({page, onNavigate}) {
     const {currency, setCurrency} = useGlobalContext()
+    const {user, logout} = useAuth()
 
     return (
         <Nav aria-label="Main">
@@ -49,6 +52,17 @@ function Sidebar({page, onNavigate}) {
                             <option key={c.code} value={c.code}>{c.code} · {c.label}</option>
                         ))}
                     </Select>
+                </div>
+                <div className="account">
+                    <span className="avatar" aria-hidden="true">{user.name.trim().charAt(0).toUpperCase()}</span>
+                    <div className="who">
+                        <span className="name">{user.name}</span>
+                        <span className="email">{user.email}</span>
+                    </div>
+                    <IconButton $variant="ghost" $size="sm" onClick={() => logout()}
+                        aria-label="Log out" title="Log out">
+                        <Icon name="right-from-bracket" />
+                    </IconButton>
                 </div>
             </div>
         </Nav>
@@ -137,6 +151,44 @@ const Nav = styled.nav`
         flex-direction: column;
         gap: .375rem;
     }
+    .account{
+        display: flex;
+        align-items: center;
+        gap: .625rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+        .avatar{
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--primary-soft);
+            color: var(--primary-text);
+            font-weight: 600;
+            font-size: .85rem;
+        }
+        .who{
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 0;
+            span{
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+        }
+        .name{
+            font-size: .875rem;
+            font-weight: 600;
+        }
+        .email{
+            font-size: .75rem;
+            color: var(--text-subtle);
+        }
+    }
     .setting-label{
         font-size: .75rem;
         font-weight: 600;
@@ -168,6 +220,13 @@ const Nav = styled.nav`
         }
         .setting-label{
             display: none;
+        }
+        .account{
+            padding-top: 0;
+            border-top: none;
+            .who{
+                display: none;
+            }
         }
         .currency select{
             height: 36px;

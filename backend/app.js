@@ -10,6 +10,12 @@ const app = express()
 
 const PORT = process.env.PORT || 5000
 
+// Login tokens are signed with this secret; refuse to start without it
+if (!process.env.JWT_SECRET) {
+    console.error('JWT_SECRET is not set. Add a long random string to backend/.env (see .env.example)')
+    process.exit(1)
+}
+
 //middlewares
 app.use(express.json({limit: '10kb'}))
 app.use(cors())

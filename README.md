@@ -4,6 +4,7 @@ A full-stack expense tracker built with MongoDB, Express, React and Node.js.
 
 ## Features
 
+- **Accounts:** sign up and log in with email and password. Each user sees only their own transactions and budgets.
 - **Dashboard:** monthly income, expenses and net savings with change vs the previous month, a 6-month income vs expenses chart, spending by category, recent transactions and a budget snapshot. Step back and forward through months.
 - **Transactions:** add, edit and delete income and expenses. Search, filter by type, category and month, sort by date or amount, and export the filtered list to CSV.
 - **Budgets:** set a monthly limit per expense category and track progress, with warnings near and over the limit.
@@ -13,7 +14,7 @@ A full-stack expense tracker built with MongoDB, Express, React and Node.js.
 ## Tech stack
 
 - **Frontend:** React 18 (Create React App), styled-components, Chart.js, axios
-- **Backend:** Node.js, Express, Mongoose
+- **Backend:** Node.js, Express, Mongoose, JWT auth with bcrypt-hashed passwords
 - **Database:** MongoDB
 
 ## Project structure
@@ -59,6 +60,13 @@ In production the backend also serves the built React app from `frontend/build`,
    |-------------|--------------------------------|---------------------------------------------|
    | `MONGO_URL` | MongoDB connection string      | `mongodb://127.0.0.1:27017/expense-tracker` |
    | `PORT`      | Port the API server listens on | `5000`                                      |
+   | `JWT_SECRET` | Secret used to sign login tokens (required) | a long random string |
+
+   Generate a secret with:
+
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+   ```
 
    `.env` is git-ignored. Never commit real credentials.
 
@@ -99,6 +107,20 @@ To point the frontend at a different API URL, set `REACT_APP_API_URL` before bui
 
 Base URL: `/api/v1`
 
+### Authentication
+
+| Method | Endpoint         | Description                                          |
+|--------|------------------|------------------------------------------------------|
+| POST   | `/auth/register` | Create an account (`{"name", "email", "password"}`); returns `{token, user}` |
+| POST   | `/auth/login`    | Log in (`{"email", "password"}`); returns `{token, user}` |
+| GET    | `/auth/me`       | The logged-in user                                   |
+
+All other endpoints require an `Authorization: Bearer <token>` header and only see the caller's own data. Tokens last 7 days. Passwords must be 8–72 characters. Login and register are rate-limited to 20 attempts per 15 minutes per IP.
+
+**Existing data:** entries created before accounts were added have no owner. The first account registered adopts them.
+
+### Transactions and budgets
+
 | Method | Endpoint              | Description                   |
 |--------|-----------------------|-------------------------------|
 | GET    | `/get-incomes`        | List incomes, newest first    |
@@ -132,7 +154,7 @@ Validation rules:
 - `title` can be up to 50 characters; `category` up to 30.
 - `description` (the note) is optional, up to 200 characters.
 
-Invalid input returns `400` with a `message`. Deleting an unknown id returns `404`.
+Invalid input returns `400` with a `message`. A missing or invalid token returns `401`. Updating or deleting an unknown id, or one belonging to another user, returns `404`.
 
 ## Tests
 
@@ -148,5 +170,6 @@ Tests use a separate `expense-tracker-test` database (override with `MONGO_TEST_
 
 - **`DB Connection Error` on startup:** MongoDB isn't running, or `MONGO_URL` is wrong. Check that the database is reachable.
 - **`MONGO_URL is not set`:** `backend/.env` is missing. Repeat step 3.
+- **`JWT_SECRET is not set`:** add `JWT_SECRET` to `backend/.env` (see step 3).
 - **`Port 5000 is already in use`:** another server is still running. Stop it, or set a different `PORT`.
 - **Blank page at http://localhost:5000:** the frontend hasn't been built. Run `npm run build` in `frontend/`.

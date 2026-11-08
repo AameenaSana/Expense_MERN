@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 
 
 const IncomeSchema = new mongoose.Schema({
+    // Owner of this entry
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
     title: {
         type: String,
         required: true,
@@ -35,5 +41,8 @@ const IncomeSchema = new mongoose.Schema({
         trim: true
     },
 }, {timestamps: true})
+
+// Lists are fetched per user, newest first
+IncomeSchema.index({user: 1, date: -1})
 
 module.exports = mongoose.model('Income', IncomeSchema)

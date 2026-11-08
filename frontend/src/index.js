@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
-import { GlobalProvider } from './context/globalContext';
+import Root from './Root';
+import { AuthProvider } from './context/authContext';
 import { ThemeProvider } from './context/themeContext';
 import { GlobalStyle } from './styles/GlobalStyle';
 
@@ -10,9 +10,9 @@ root.render(
   <React.StrictMode>
     <GlobalStyle />
     <ThemeProvider>
-      <GlobalProvider>
-        <App />
-      </GlobalProvider>
+      <AuthProvider>
+        <Root />
+      </AuthProvider>
     </ThemeProvider>
   </React.StrictMode>
 );

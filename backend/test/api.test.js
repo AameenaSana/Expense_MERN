@@ -4,6 +4,8 @@ const { test, before, after, describe } = require('node:test')
 const assert = require('node:assert/strict')
 
 process.env.MONGO_URL = process.env.MONGO_TEST_URL || 'mongodb://127.0.0.1:27017/expense-tracker-test'
+process.env.JWT_SECRET = 'test-secret'
+process.env.NODE_ENV = 'test'
 
 const mongoose = require('mongoose')
 const app = require('../app')
@@ -11,11 +13,16 @@ const { db } = require('../db/db')
 
 let server
 let base
+// Token of the main test user, sent by default with every request
+let token
 
-const request = async (method, path, body) => {
+const request = async (method, path, body, auth = token) => {
+    const headers = {}
+    if (body !== undefined) headers['Content-Type'] = 'application/json'
+    if (auth) headers.Authorization = `Bearer ${auth}`
     const res = await fetch(base + path, {
         method,
-        headers: body !== undefined ? {'Content-Type': 'application/json'} : undefined,
+        headers,
         body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
     })
     const text = await res.text()
@@ -40,6 +47,70 @@ before(async () => {
     await mongoose.connection.dropDatabase()
     server = app.listen(0)
     base = `http://127.0.0.1:${server.address().port}/api/v1`
+})
+
+const alice = {name: 'Alice', email: 'Alice@Example.com', password: 'correct horse'}
+
+describe('auth', () => {
+    test('registers a user and returns a token without the password', async () => {
+        // An entry from before accounts existed (no owner)
+        await mongoose.connection.collection('incomes').insertOne({...validIncome, date: new Date(validIncome.date), type: 'income'})
+
+        const res = await request('POST', '/auth/register', alice, null)
+        assert.equal(res.status, 201)
+        assert.ok(res.body.token)
+        assert.equal(res.body.user.email, 'alice@example.com')
+        assert.equal(res.body.user.password, undefined)
+        token = res.body.token
+    })
+
+    test('rejects duplicate emails, case-insensitively', async () => {
+        const res = await request('POST', '/auth/register', {...alice, email: 'ALICE@example.com'}, null)
+        assert.equal(res.status, 409)
+    })
+
+    test('validates registration input', async () => {
+        const cases = [
+            [{...alice, email: 'new@example.com', name: ' '}, /Name is required/],
+            [{...alice, email: 'not-an-email'}, /valid email/],
+            [{...alice, email: 'new@example.com', password: 'short'}, /at least 8/],
+        ]
+        for (const [body, message] of cases) {
+            const res = await request('POST', '/auth/register', body, null)
+            assert.equal(res.status, 400, JSON.stringify(body))
+            assert.match(res.body.message, message)
+        }
+    })
+
+    test('logs in with the right password only', async () => {
+        const ok = await request('POST', '/auth/login', {email: 'alice@example.com', password: alice.password}, null)
+        assert.equal(ok.status, 200)
+        assert.ok(ok.body.token)
+
+        const wrong = await request('POST', '/auth/login', {email: alice.email, password: 'wrong password'}, null)
+        assert.equal(wrong.status, 401)
+        const unknown = await request('POST', '/auth/login', {email: 'nobody@example.com', password: alice.password}, null)
+        assert.equal(unknown.status, 401)
+        assert.equal(wrong.body.message, unknown.body.message)
+    })
+
+    test('the first account adopts entries created before accounts existed', async () => {
+        const list = await request('GET', '/get-incomes')
+        assert.equal(list.body.length, 1)
+        await mongoose.connection.collection('incomes').deleteMany({})
+    })
+
+    test('returns the current user for a valid token', async () => {
+        const res = await request('GET', '/auth/me')
+        assert.equal(res.status, 200)
+        assert.equal(res.body.user.name, 'Alice')
+    })
+
+    test('protected routes require a valid token', async () => {
+        assert.equal((await request('GET', '/get-incomes', undefined, null)).status, 401)
+        assert.equal((await request('GET', '/budgets', undefined, 'garbage')).status, 401)
+        assert.equal((await request('GET', '/auth/me', undefined, null)).status, 401)
+    })
 })
 
 after(async () => {
@@ -141,4 +212,37 @@ test('unknown API routes return JSON 404', async () => {
     const res = await request('GET', '/does-not-exist')
     assert.equal(res.status, 404)
     assert.equal(res.body.message, 'Not Found')
+})
+
+describe('data isolation between users', () => {
+    let bobToken
+
+    before(async () => {
+        const res = await request('POST', '/auth/register', {name: 'Bob', email: 'bob@example.com', password: 'another pass'}, null)
+        bobToken = res.body.token
+    })
+
+    test("users only see and change their own transactions", async () => {
+        const added = await request('POST', '/add-expense', {...validIncome, title: 'Alice rent', category: 'rent'})
+        const id = added.body.data._id
+
+        const bobList = await request('GET', '/get-expenses', undefined, bobToken)
+        assert.equal(bobList.status, 200)
+        assert.ok(!bobList.body.some((e) => e._id === id))
+
+        assert.equal((await request('PUT', `/update-expense/${id}`, validIncome, bobToken)).status, 404)
+        assert.equal((await request('DELETE', `/delete-expense/${id}`, undefined, bobToken)).status, 404)
+        assert.equal((await request('DELETE', `/delete-expense/${id}`)).status, 200)
+    })
+
+    test('each user can have their own budget for the same category', async () => {
+        assert.equal((await request('PUT', '/budgets/food', {amount: 100})).status, 200)
+        assert.equal((await request('PUT', '/budgets/food', {amount: 200}, bobToken)).status, 200)
+
+        const aliceBudgets = await request('GET', '/budgets')
+        const bobBudgets = await request('GET', '/budgets', undefined, bobToken)
+        assert.equal(aliceBudgets.body.find((b) => b.category === 'food').amount, 100)
+        assert.equal(bobBudgets.body.length, 1)
+        assert.equal(bobBudgets.body[0].amount, 200)
+    })
 })

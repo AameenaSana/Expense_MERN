@@ -1,22 +1,9 @@
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
-import axios from 'axios'
-
-
-// Relative URL so it works both when the backend serves the build and in dev
-// (via the "proxy" field in package.json). Override with REACT_APP_API_URL if needed.
-const BASE_URL = process.env.REACT_APP_API_URL || "/api/v1/";
-
-const api = axios.create({baseURL: BASE_URL, timeout: 15000})
+import { api, errorMessage } from '../utils/api'
 
 const ENDPOINTS = {
     income: {list: 'get-incomes', add: 'add-income', update: 'update-income', remove: 'delete-income'},
     expense: {list: 'get-expenses', add: 'add-expense', update: 'update-expense', remove: 'delete-expense'},
-}
-
-const errorMessage = (err) => {
-    if (err?.response?.data?.message) return err.response.data.message
-    if (err?.code === 'ECONNABORTED') return 'The server took too long to respond. Please try again.'
-    return 'Unable to reach the server. Check that the backend is running.'
 }
 
 const readCurrency = () => {
